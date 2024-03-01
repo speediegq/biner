@@ -9,10 +9,13 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <exception>
 #include <string>
 #include <string_view>
 #include <filesystem>
 #include <vector>
+#include <algorithm>
+#include <unistd.h>
 #include <biner.hpp>
 
 void biner::printHelp(const bool Error) {
@@ -164,6 +167,13 @@ int main(int argc, char** argv) {
             } else {
                 std::cerr << "File '" << arg << "' does not exist, or is an invalid parameter.\n";
             }
+        }
+    }
+
+    if (!isatty(STDIN_FILENO)) {
+        std::string data{};
+        while (std::getline(std::cin, data)) {
+            files.push_back(data);
         }
     }
 
