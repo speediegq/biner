@@ -15,6 +15,7 @@ namespace biner {
     };
 
     bool verbose{false};
+    std::string directory{"./"};
     std::string binerBeginMarker{"--!- BINER FILE BEGIN -!--"};
     std::string binerEndMarker{"--!- BINER FILE END -!--"};
 

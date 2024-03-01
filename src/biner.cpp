@@ -18,7 +18,7 @@
 
 void biner::printHelp(const bool Error) {
     const std::string_view help{
-        "usage: biner [-c] [-s] [-v] [-bm text] [-em text] [-o output] files\n"
+        "usage: biner [-c] [-s] [-d directory] [-v] [-bm text] [-em text] [-o output] files\n"
     };
     if (Error) {
         std::cerr << help;
@@ -119,7 +119,7 @@ void biner::separateFiles(const std::vector<T>& files) {
                     fileContents.substr(fileNameEnd + 1, end - fileNameEnd - 1) // 1 is the newline
                 };
 
-                const std::filesystem::path fs{"./" + fileName};
+                const std::filesystem::path fs{biner::directory + fileName};
                 std::string path = fs.filename();
 
                 if (std::filesystem::exists(path)) {
@@ -142,7 +142,7 @@ void biner::separateFiles(const std::vector<T>& files) {
                     }
                 }
 
-                std::ofstream of{"./" + path};
+                std::ofstream of{biner::directory + path};
 
                 of << fileData;
 
@@ -181,6 +181,12 @@ int main(int argc, char** argv) {
             mode = biner::BINER_MODE_COMBINE;
         } else if (!arg.compare("-s") || !arg.compare("--separate")) {
             mode = biner::BINER_MODE_SEPARATE;
+        } else if (!arg.compare("-d") || !arg.compare("--directory")) {
+            if (arguments.size() <= it + 1) {
+                std::cerr << "-d and --directory parameters require an extra parameter.\n";
+                return EXIT_FAILURE;
+            }
+            biner::directory = arguments.at(++it);
         } else if (!arg.compare("-bm") || !arg.compare("--begin-marker")) {
             if (arguments.size() <= it + 1) {
                 std::cerr << "-bm and --begin-marker parameters require an extra parameter.\n";
