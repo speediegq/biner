@@ -14,6 +14,7 @@ namespace biner {
         BINER_MODE_UNDEFINED,
     };
 
+    bool verbose{false};
     std::string binerBeginMarker{"--!- BINER FILE BEGIN -!--"};
     std::string binerEndMarker{"--!- BINER FILE END -!--"};
 
