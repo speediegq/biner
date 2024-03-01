@@ -96,7 +96,7 @@ void biner::separateFiles(const std::vector<T>& files) {
         }
 
         std::size_t beginning{fileContents.find(biner::binerBeginMarker)};
-        if (beginning == std::string::npos || fileContents.find(biner::binerEndMarker.size(), beginning) == std::string::npos) {
+        if (beginning == std::string::npos || fileContents.find(biner::binerEndMarker) == std::string::npos) {
             std::cerr << "The file or data specified is not valid, because it's missing biner marker data. If needed, try overriding the biner markers.\n";
             std::exit(EXIT_FAILURE);
         }
@@ -115,12 +115,8 @@ void biner::separateFiles(const std::vector<T>& files) {
                     fileContents.substr(fileNameBeginning, fileNameEnd - fileNameBeginning)
                 };
 
-                const std::string_view fileData{
-                    fileContents.substr(fileNameEnd + 1, end - fileNameEnd - 1) // 1 is the newline
-                };
-
                 const std::filesystem::path fs{biner::directory + fileName};
-                std::string path = fs.filename();
+                std::string path{ fs.filename().string() };
 
                 if (std::filesystem::exists(path)) {
                     int i{1};
@@ -144,7 +140,7 @@ void biner::separateFiles(const std::vector<T>& files) {
 
                 std::ofstream of{biner::directory + path};
 
-                of << fileData;
+                of << fileContents.substr(fileNameEnd + 1, end - fileNameEnd - 1); // 1 is the newline
 
                 of.close();
             }
@@ -281,8 +277,8 @@ int main(int argc, char** argv) {
                     std::cerr << "Writing data to file '" << outputFile << "'\n";
                 }
 
-                std::filesystem::path fs{};
-                std::string dirname = (fs = outputFile).remove_filename();
+                std::filesystem::path fs = outputFile;
+                std::string dirname = fs.remove_filename().string();
 
                 if (!std::filesystem::exists(dirname) && !dirname.empty()) {
                     if (!std::filesystem::create_directories(fs)) {
