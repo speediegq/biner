@@ -95,6 +95,18 @@ void biner::separateFiles(const std::vector<T>& files) {
             std::cerr << "'" << it << "' is not a file that exists, so treating it as raw data.\n";
         }
 
+        if (!std::filesystem::exists(biner::directory)) {
+            std::filesystem::create_directory(biner::directory);
+        }
+
+#ifdef _WIN32
+        if (biner::directory.at(biner::directory.size() - 1) == '\\')
+            biner::directory += "\\";
+#else
+        if (biner::directory.at(biner::directory.size() - 1) == '/')
+            biner::directory += "/";
+#endif
+
         std::size_t beginning{fileContents.find(biner::binerBeginMarker)};
         if (beginning == std::string::npos || fileContents.find(biner::binerEndMarker) == std::string::npos) {
             std::cerr << "The file or data specified is not valid, because it's missing biner marker data. If needed, try overriding the biner markers.\n";
@@ -115,7 +127,7 @@ void biner::separateFiles(const std::vector<T>& files) {
                     fileContents.substr(fileNameBeginning, fileNameEnd - fileNameBeginning)
                 };
 
-                const std::filesystem::path fs{biner::directory + "/" + fileName};
+                const std::filesystem::path fs{biner::directory + fileName};
                 std::string path{ fs.filename().string() };
 
                 if (std::filesystem::exists(path)) {
@@ -138,7 +150,7 @@ void biner::separateFiles(const std::vector<T>& files) {
                     }
                 }
 
-                std::ofstream of{biner::directory + "/" + path};
+                std::ofstream of{biner::directory + path};
 
                 of << fileContents.substr(fileNameEnd + 1, end - fileNameEnd - 1); // 1 is the newline
 
