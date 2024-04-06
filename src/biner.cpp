@@ -28,7 +28,7 @@ void biner::printHelp(const bool Error) {
 }
 
 template <typename T>
-std::string biner::combineFiles(const std::vector<T>& files) {
+std::string biner::combineFiles(const struct biner::Settings& settings, const std::vector<T>& files) {
     std::string combinedData{};
 
     for (const auto& it : files) {
@@ -36,7 +36,7 @@ std::string biner::combineFiles(const std::vector<T>& files) {
             throw std::runtime_error{"File passed to biner::combineFiles() does not exist."};
         }
 
-        if (biner::verbose) {
+        if (settings.verbose) {
             std::cerr << "Adding file '" << it << "' to buffer.\n";
         }
 
@@ -48,21 +48,21 @@ std::string biner::combineFiles(const std::vector<T>& files) {
             throw std::runtime_error{"File passed to biner::combineFiles() failed to open."};
         }
 
-        combinedData += biner::binerBeginMarker + " " + itstr + "\n";
+        combinedData += settings.binerBeginMarker + " " + itstr + "\n";
 
         ss << file.rdbuf();
         combinedData += ss.str();
 
         file.close();
 
-        combinedData += biner::binerEndMarker + " " + itstr + "\n";
+        combinedData += settings.binerEndMarker + " " + itstr + "\n";
 
-        if (biner::verbose) {
+        if (settings.verbose) {
             std::cerr << "Added file '" << it << "' to buffer.\n";
         }
     }
 
-    if (biner::verbose) {
+    if (settings.verbose) {
         std::cerr << "All done. No problems reported.\n";
     }
 
@@ -70,7 +70,7 @@ std::string biner::combineFiles(const std::vector<T>& files) {
 }
 
 template <typename T>
-void biner::separateFiles(const std::vector<T>& files) {
+void biner::separateFiles(const struct Settings& settings, const std::vector<T>& files) {
     for (const auto& it : files) {
         std::string fileContents{it};
 
@@ -88,46 +88,34 @@ void biner::separateFiles(const std::vector<T>& files) {
 
             file.close();
 
-            if (biner::verbose) {
+            if (settings.verbose) {
                 std::cerr << "Processing file '" << it << "'.\n";
             }
-        } else if (biner::verbose) {
+        } else if (settings.verbose) {
             std::cerr << "'" << it << "' is not a file that exists, so treating it as raw data.\n";
         }
 
-        if (!std::filesystem::exists(biner::directory)) {
-            std::filesystem::create_directory(biner::directory);
-        }
-
-#ifdef _WIN32
-        if (biner::directory.at(biner::directory.size() - 1) == '\\')
-            biner::directory += "\\";
-#else
-        if (biner::directory.at(biner::directory.size() - 1) == '/')
-            biner::directory += "/";
-#endif
-
-        std::size_t beginning{fileContents.find(biner::binerBeginMarker)};
-        if (beginning == std::string::npos || fileContents.find(biner::binerEndMarker) == std::string::npos) {
+        std::size_t beginning{fileContents.find(settings.binerBeginMarker)};
+        if (beginning == std::string::npos || fileContents.find(settings.binerEndMarker) == std::string::npos) {
             std::cerr << "The file or data specified is not valid, because it's missing biner marker data. If needed, try overriding the biner markers.\n";
             std::exit(EXIT_FAILURE);
         }
         while (beginning != std::string::npos) {
-            const std::size_t end{fileContents.find(biner::binerEndMarker, beginning)};
+            const std::size_t end{fileContents.find(settings.binerEndMarker, beginning)};
 
-            if (biner::verbose) {
+            if (settings.verbose) {
                 std::cerr << "Parsing file.\n";
             }
 
             // each section
             if (end != std::string::npos) {
-                const std::size_t fileNameBeginning{beginning + biner::binerBeginMarker.size() + 1};
+                const std::size_t fileNameBeginning{beginning + settings.binerBeginMarker.size() + 1};
                 const std::size_t fileNameEnd{fileContents.find("\n", fileNameBeginning)};
                 const std::string fileName{
                     fileContents.substr(fileNameBeginning, fileNameEnd - fileNameBeginning)
                 };
 
-                const std::filesystem::path fs{biner::directory + fileName};
+                const std::filesystem::path fs{settings.directory + fileName};
                 std::string path{ fs.filename().string() };
 
                 if (std::filesystem::exists(path)) {
@@ -145,28 +133,28 @@ void biner::separateFiles(const std::vector<T>& files) {
                         throw std::runtime_error{"Too many duplicate files. Because I don't want to kill your SSD, I've decided to stop here."};
                     }
 
-                    if (biner::verbose) {
+                    if (settings.verbose) {
                         std::cerr << "Duplicate file found, renaming it to '" << path << "'\n";
                     }
                 }
 
-                std::ofstream of{biner::directory + path};
+                std::ofstream of{settings.directory + path};
 
                 of << fileContents.substr(fileNameEnd + 1, end - fileNameEnd - 1); // 1 is the newline
 
                 of.close();
             }
 
-            fileContents.erase(beginning, end - beginning + biner::binerEndMarker.size() + 1);
-            beginning = fileContents.find(biner::binerBeginMarker, beginning); // next file
+            fileContents.erase(beginning, end - beginning + settings.binerEndMarker.size() + 1);
+            beginning = fileContents.find(settings.binerBeginMarker, beginning); // next file
         }
 
-        if (biner::verbose) {
+        if (settings.verbose) {
             std::cerr << "Parsed file.\n";
         }
     }
 
-    if (biner::verbose) {
+    if (settings.verbose) {
         std::cerr << "All done. No problems reported.\n";
     }
 }
@@ -176,6 +164,7 @@ int main(int argc, char** argv) {
     const std::vector<std::string_view> arguments(argv, argv + argc);
     std::vector<std::string_view> files{};
     int mode{biner::BINER_MODE_UNDEFINED};
+    biner::Settings settings{};
 
     for (std::size_t it{1}; it < arguments.size(); ++it) {
         const std::string_view arg{arguments.at(it)};
@@ -184,7 +173,7 @@ int main(int argc, char** argv) {
             biner::printHelp(false);
             return EXIT_SUCCESS;
         } else if (!arg.compare("-v") || !arg.compare("--verbose")) {
-            biner::verbose = true;
+            settings.verbose = true;
         } else if (!arg.compare("-c") || !arg.compare("--combine")) {
             mode = biner::BINER_MODE_COMBINE;
         } else if (!arg.compare("-s") || !arg.compare("--separate")) {
@@ -194,20 +183,20 @@ int main(int argc, char** argv) {
                 std::cerr << "-d and --directory parameters require an extra parameter.\n";
                 return EXIT_FAILURE;
             }
-            biner::directory = arguments.at(++it);
+            settings.directory = arguments.at(++it);
         } else if (!arg.compare("-bm") || !arg.compare("--begin-marker")) {
             if (arguments.size() <= it + 1) {
                 std::cerr << "-bm and --begin-marker parameters require an extra parameter.\n";
                 return EXIT_FAILURE;
             } else {
-                biner::binerBeginMarker = arguments.at(++it);
+                settings.binerBeginMarker = arguments.at(++it);
             }
         } else if (!arg.compare("-em") || !arg.compare("--end-marker")) {
             if (arguments.size() <= it + 1) {
                 std::cerr << "-em and --end-marker parameters require an extra parameter.\n";
                 return EXIT_FAILURE;
             } else {
-                biner::binerEndMarker = arguments.at(++it);
+                settings.binerEndMarker = arguments.at(++it);
             }
         } else if (!arg.compare("-o") || !arg.compare("--output")) {
             if (arguments.size() <= it + 1) {
@@ -225,7 +214,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    if (biner::verbose) {
+    if (settings.verbose) {
         std::cerr << "Verbose mode enabled (-v)\n";
         std::cerr << "Arguments:\n";
         for (const auto& it : arguments) {
@@ -236,31 +225,52 @@ int main(int argc, char** argv) {
     std::cin.sync_with_stdio(false);
     if (std::cin.rdbuf()->in_avail()) {
         std::string data{};
-        if (biner::verbose) {
+        if (settings.verbose) {
             std::cerr << "Reading from standard input.\n";
         }
 
         while (std::getline(std::cin, data)) {
             files.push_back(data);
 
-            if (biner::verbose) {
+            if (settings.verbose) {
                 std::cerr << "Added file '" << data << "' to list.\n";
             }
         }
-    } else if (biner::verbose) {
+    } else if (settings.verbose) {
         std::cerr << "Not reading from standard input.\n";
     }
+
+    if (!std::filesystem::exists(settings.directory)) {
+        if (!std::filesystem::create_directory(settings.directory)) {
+            std::cerr << "Failed to create directory, exiting.\n";
+            return EXIT_FAILURE;
+        }
+
+        if (settings.verbose) {
+            std::cerr << "Created directory '" << settings.directory << "' because it does not exist.\n";
+        }
+    }
+
+#ifdef _WIN32
+        if (settings.directory.at(settings.directory.size() - 1) == '\\')
+            settings.directory += "\\";
+#else
+        if (settings.directory.at(settings.directory.size() - 1) == '/')
+            settings.directory += "/";
+#endif
 
     if (mode == biner::BINER_MODE_UNDEFINED) {
         std::cerr << "You must specify a mode.\n";
         return EXIT_FAILURE;
     }
 
-    if (biner::verbose) {
+    if (settings.verbose) {
         std::cerr << "Files:\n";
+
         for (const auto& it : files) {
             std::cerr << it << "\n";
         }
+
         std::cerr << (biner::BINER_MODE_COMBINE ? "Biner in combine mode.\n" : "Biner in separate mode.\n");
     }
 
@@ -276,16 +286,16 @@ int main(int argc, char** argv) {
 
     try {
         if (mode == biner::BINER_MODE_SEPARATE) {
-            biner::separateFiles(files);
+            biner::separateFiles(settings, files);
         } else {
             if (!outputFile.compare("")) {
-                if (biner::verbose) {
+                if (settings.verbose) {
                     std::cerr << "Outputting data to standard output (stdout)\n";
                 }
 
-                std::cout << biner::combineFiles(files);
+                std::cout << biner::combineFiles(settings, files);
             } else {
-                if (biner::verbose) {
+                if (settings.verbose) {
                     std::cerr << "Writing data to file '" << outputFile << "'\n";
                 }
 
@@ -300,7 +310,7 @@ int main(int argc, char** argv) {
 
                 std::ofstream of{outputFile};
 
-                of << biner::combineFiles(files);
+                of << biner::combineFiles(settings, files);
 
                 of.close();
             }

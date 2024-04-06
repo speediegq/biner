@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 namespace biner {
     enum {
         BINER_MODE_COMBINE,
@@ -14,12 +17,14 @@ namespace biner {
         BINER_MODE_UNDEFINED,
     };
 
-    bool verbose{false};
-    std::string directory{"./"};
-    std::string binerBeginMarker{"--!- BINER FILE BEGIN -!--"};
-    std::string binerEndMarker{"--!- BINER FILE END -!--"};
+    struct Settings {
+        bool verbose{false};
+        std::string directory{"./"};
+        std::string binerBeginMarker{"--!- BINER FILE BEGIN -!--"};
+        std::string binerEndMarker{"--!- BINER FILE END -!--"};
+    };
 
     void printHelp(const bool Error);
-    template <typename T> std::string combineFiles(const std::vector<T>& files);
-    template <typename T> void separateFiles(const std::vector<T>& files);
+    template <typename T> std::string combineFiles(const struct Settings& settings, const std::vector<T>& files);
+    template <typename T> void separateFiles(const struct Settings& settings, const std::vector<T>& files);
 }
