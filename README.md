@@ -9,8 +9,13 @@ Combine and separate text files
 
 ## Installation
 
-- `meson setup build/ --prefix=/usr`
-- `meson install -C build/`
+- `mkdir build/ && cd build`
+- `cmake ..`
+- `cmake --build .`
+
+If you want to install biner rather than build it:
+
+- `cmake --install .`
 
 ## Usage
 
